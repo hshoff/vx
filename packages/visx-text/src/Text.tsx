@@ -1,5 +1,6 @@
 import React from 'react';
 import reduceCSSCalc from 'reduce-css-calc';
+import uniqueId from 'lodash/uniqueId';
 import getStringWidth from './util/getStringWidth';
 
 const SVG_STYLE = { overflow: 'visible' };
@@ -67,12 +68,15 @@ type OwnProps = {
   width?: number;
   /** String (or number coercible to one) to be styled and positioned. */
   children?: string | number;
+  /** Path for the text to follow along. */
+  textPath?: string;
 };
 
 export type TextProps = OwnProps & Omit<SVGTextProps, keyof OwnProps>;
 
 type TextState = {
   wordsByLines: WordsWithWidth[];
+  textPathId: string;
 };
 
 class Text extends React.Component<TextProps, TextState> {
@@ -88,13 +92,17 @@ class Text extends React.Component<TextProps, TextState> {
     verticalAnchor: 'end', // default SVG behavior
   };
 
-  state: TextState = {
-    wordsByLines: [],
-  };
-
   private wordsWithWidth: WordWithWidth[] = [];
-
   private spaceWidth: number = 0;
+
+  constructor(props: TextProps) {
+    super(props);
+
+    this.state = {
+      wordsByLines: [],
+      textPathId: props.textPath ? uniqueId('text-path-') : '',
+    };
+  }
 
   componentDidMount() {
     this.updateWordsByLines(this.props, true);
@@ -178,10 +186,11 @@ class Text extends React.Component<TextProps, TextState> {
       capHeight,
       innerRef,
       width,
+      textPath,
       ...textProps
     } = this.props;
 
-    const { wordsByLines } = this.state;
+    const { wordsByLines, textPathId } = this.state;
     const { x, y } = textProps;
 
     // Cannot render <text> if x or y is invalid
@@ -214,15 +223,17 @@ class Text extends React.Component<TextProps, TextState> {
     }
 
     const transform = transforms.length > 0 ? transforms.join(' ') : undefined;
+    const text = wordsByLines.map((line, index) => (
+      <tspan key={index} x={x} dy={index === 0 ? startDy : lineHeight}>
+        {line.words.join(' ')}
+      </tspan>
+    ));
 
     return (
       <svg ref={innerRef} x={dx} y={dy} fontSize={textProps.fontSize} style={SVG_STYLE}>
+        {textPath && <path id={textPathId} d={textPath} fill="none" />}
         <text transform={transform} {...textProps} textAnchor={textAnchor}>
-          {wordsByLines.map((line, index) => (
-            <tspan key={index} x={x} dy={index === 0 ? startDy : lineHeight}>
-              {line.words.join(' ')}
-            </tspan>
-          ))}
+          {textPath ? <textPath href={`#${textPathId}`}>{text}</textPath> : text}
         </text>
       </svg>
     );

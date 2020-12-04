@@ -162,4 +162,23 @@ describe('<Text />', () => {
     wrapper.setProps({ verticalAnchor: 'start' });
     expect(getVerticalOffset(wrapper)).toBe('0.71em');
   });
+  it('Should render textPath when textPath is passed', () => {
+    const wrapper = mount<Text>(<Text textPath="M10 10">Text path test</Text>);
+
+    const textPath = wrapper.find('textPath');
+    const path = wrapper.find('path');
+
+    expect(textPath).toHaveLength(1);
+    expect(path).toHaveLength(1);
+
+    expect(textPath.props().href).toEqual(`#${path.props().id}`);
+    expect(path.props().d).toEqual('M10 10');
+  });
+
+  it('Should not render textPath when textPath is not passed', () => {
+    const wrapper = mount<Text>(<Text>Text path test</Text>);
+
+    expect(wrapper.find('textPath')).toHaveLength(0);
+    expect(wrapper.find('path')).toHaveLength(0);
+  });
 });
