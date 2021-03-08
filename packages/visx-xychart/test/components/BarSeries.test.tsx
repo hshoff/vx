@@ -1,6 +1,7 @@
 import React, { useContext, useEffect } from 'react';
 import { animated } from 'react-spring';
 import { mount } from 'enzyme';
+import { BarRounded } from '@visx/shape';
 import { DataContext, AnimatedBarSeries, BarSeries, useEventEmitter } from '../../src';
 import getDataContext from '../mocks/getDataContext';
 import setupTooltipTest from '../mocks/setupTooltipTest';
@@ -28,6 +29,17 @@ describe('<BarSeries />', () => {
       </DataContext.Provider>,
     );
     expect(wrapper.find('rect')).toHaveLength(2);
+  });
+
+  it('should render BarRounded if radius is set', () => {
+    const wrapper = mount(
+      <DataContext.Provider value={getDataContext(series)}>
+        <svg>
+          <BarSeries dataKey={series.key} radiusAll radius={4} {...series} />
+        </svg>
+      </DataContext.Provider>,
+    );
+    expect(wrapper.find(BarRounded)).toHaveLength(2);
   });
 
   it('should use colorAccessor if passed', () => {

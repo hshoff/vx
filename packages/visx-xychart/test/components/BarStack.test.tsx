@@ -11,6 +11,7 @@ import {
 } from '../../src';
 import setupTooltipTest from '../mocks/setupTooltipTest';
 import { XYCHART_EVENT_SOURCE } from '../../src/constants';
+import { BarRounded } from '@visx/shape';
 
 const providerProps = {
   initialDimensions: { width: 100, height: 100 },
@@ -63,6 +64,20 @@ describe('<BarStack />', () => {
       </DataProvider>,
     );
     expect(wrapper.find('rect')).toHaveLength(4);
+  });
+
+  it('should render BarRounded if radius is set', () => {
+    const wrapper = mount(
+      <DataProvider {...providerProps}>
+        <svg>
+          <BarStack>
+            <BarSeries dataKey={series1.key} radiusAll radius={4} {...series1} />
+            <BarSeries dataKey={series2.key} {...series2} />
+          </BarStack>
+        </svg>
+      </DataProvider>,
+    );
+    expect(wrapper.find(BarRounded)).toHaveLength(2);
   });
 
   it('should use colorAccessor if passed', () => {
