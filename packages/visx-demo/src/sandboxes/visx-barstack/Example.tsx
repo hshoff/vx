@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { BarStack } from '@visx/shape';
 import { SeriesPoint } from '@visx/shape/lib/types';
 import { Group } from '@visx/group';
@@ -29,6 +29,7 @@ export type BarStackProps = {
   height: number;
   margin?: { top: number; right: number; bottom: number; left: number };
   events?: boolean;
+  data?: CityTemperature[];
 };
 
 const purple1 = '#6c5efb';
@@ -43,17 +44,20 @@ const tooltipStyles = {
   color: 'white',
 };
 
-const data = cityTemperature.slice(0, 12);
-const keys = Object.keys(data[0]).filter(d => d !== 'date') as CityName[];
+const getKeys = (data: CityTemperature): CityName[] =>
+  Object.keys(data).filter(d => d !== 'date') as CityName[];
 
-const temperatureTotals = data.reduce((allTotals, currentDate) => {
-  const totalTemperature = keys.reduce((dailyTotal, k) => {
-    dailyTotal += Number(currentDate[k]);
-    return dailyTotal;
-  }, 0);
-  allTotals.push(totalTemperature);
-  return allTotals;
-}, [] as number[]);
+const getTemperatureTotals = (data: readonly CityTemperature[], keys: readonly CityName[]) => {
+  return data.reduce<number[]>((allTotals, currentDate) => {
+    const totalTemperature = keys.reduce((dailyTotal, k) => {
+      dailyTotal += Number(currentDate[k]);
+      return dailyTotal;
+    }, 0);
+
+    allTotals.push(totalTemperature);
+    return allTotals;
+  }, []);
+};
 
 const parseDate = timeParse('%Y-%m-%d');
 const format = timeFormat('%b %d');
@@ -63,18 +67,38 @@ const formatDate = (date: string) => format(parseDate(date) as Date);
 const getDate = (d: CityTemperature) => d.date;
 
 // scales
-const dateScale = scaleBand<string>({
-  domain: data.map(getDate),
-  padding: 0.2,
-});
-const temperatureScale = scaleLinear<number>({
-  domain: [0, Math.max(...temperatureTotals)],
-  nice: true,
-});
-const colorScale = scaleOrdinal<CityName, string>({
-  domain: keys,
-  range: [purple1, purple2, purple3],
-});
+const createDateScale = ({ data, xMax }: { data: readonly CityTemperature[]; xMax: number }) => {
+  const dateScale = scaleBand<string>({
+    domain: data.map(getDate),
+    padding: 0.2,
+  });
+  dateScale.rangeRound([0, xMax]);
+  return dateScale;
+};
+
+const createTemperatureScale = ({
+  data,
+  keys,
+  yMax,
+}: {
+  data: readonly CityTemperature[];
+  keys: readonly CityName[];
+  yMax: number;
+}) => {
+  const temperatureTotals = getTemperatureTotals(data, keys);
+  return scaleLinear<number>({
+    domain: [0, Math.max(...temperatureTotals)],
+    nice: true,
+    range: [yMax, 0],
+  });
+};
+
+const createColorScale = (keys: CityName[]) => {
+  return scaleOrdinal<CityName, string>({
+    domain: keys,
+    range: [purple1, purple2, purple3],
+  });
+};
 
 let tooltipTimeout: number;
 
@@ -83,6 +107,7 @@ export default function Example({
   height,
   events = false,
   margin = defaultMargin,
+  data = cityTemperature.slice(0, 12),
 }: BarStackProps) {
   const {
     tooltipOpen,
@@ -100,15 +125,24 @@ export default function Example({
     scroll: true,
   });
 
-  if (width < 10) return null;
+  const keys = useMemo(() => getKeys(data[0]), [data]);
+
   // bounds
   const xMax = width;
   const yMax = height - margin.top - 100;
 
-  dateScale.rangeRound([0, xMax]);
-  temperatureScale.range([yMax, 0]);
+  // scales
+  const dateScale = useMemo(() => createDateScale({ data, xMax }), [data, xMax]);
+  const temperatureScale = useMemo(() => createTemperatureScale({ data, keys, yMax }), [
+    data,
+    keys,
+    yMax,
+  ]);
+  const colorScale = useMemo(() => createColorScale(keys), [keys]);
 
-  return width < 10 ? null : (
+  if (width < 10) return null;
+
+  return (
     <div style={{ position: 'relative' }}>
       <svg ref={containerRef} width={width} height={height}>
         <rect x={0} y={0} width={width} height={height} fill={background} rx={14} />
